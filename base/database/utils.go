@@ -233,6 +233,6 @@ func InventoryHostsJoin(tx *gorm.DB, groups map[string]string) *gorm.DB {
 	tx = tx.Where("ih.groups @> ANY (?::jsonb[])", groups[rbac.KeyGrouped])
 	if _, ok := groups[rbac.KeyUngrouped]; ok {
 		tx = tx.Or("ih.groups = '[]'")
-	}
+	} // Possible question: ALL hosts or only ungrouped?
 	return tx.Where(tx)
 }
