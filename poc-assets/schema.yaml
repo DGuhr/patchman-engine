@@ -1,0 +1,213 @@
+schema: |-
+  definition user {}
+
+  definition group {
+  	relation member: user | group#member
+  }
+
+  definition role {
+  	// content namespace
+  	relation content_host_manage_subscription: user:*
+
+  	// openshift namespace
+  	relation openshift_cluster_get : user:* //| user:* with not_deprovisioned_osd_rosa
+  	relation openshift_cluster_update : user:* //| user:* with not_deprovisioned
+  	relation openshift_cluster_delete : user:*
+
+  	// Can report metrics about openshift/*
+  	relation openshift_metrics_report : user:*
+
+  	relation dispatcher_view_remediations: user:*
+    relation dispatcher_view_tasks: user:*
+    relation dispatcher_view_configmanager: user:*
+
+  // <GENERATED_ROLE_PERMS_HERE>
+  }
+
+  definition role_binding {
+  	relation subject : user | group#member
+  	relation granted: role
+
+  	// {resourceType}_{action} = subject & granted->{resourceType}_{action}
+  	permission content_host_manage_subscription = subject & granted->content_host_manage_subscription
+
+  	permission openshift_metrics_report = subject & granted->openshift_metrics_report
+
+  	permission dispatcher_view_remediations = subject & granted->dispatcher_view_remediations
+      permission dispatcher_view_tasks = subject & granted->dispatcher_view_tasks
+      permission dispatcher_view_configmanager = subject & granted->dispatcher_view_configmanager
+
+  // <GENERATED_ROLEBINDING_PERMS_HERE>
+  }
+
+  definition realm {
+  	relation user_grant: role_binding
+  }
+
+  definition organization {
+  	// every org should get an realm relation to a common root
+  	relation realm: realm
+  	relation user_grant: role_binding
+
+  	// authority=service provider
+  	// the authority is important, because you can assign entitlement_sets to workspaces all you want,
+  	// but the service provider has to agree.
+  	// the authority is about "meta permissions": what party is authorized to write these relations
+  	relation entitlement_grant: entitlement_set | entitlement_binding // with expiration
+
+  	permission content_provider = entitlement_grant->content_provider
+  }
+
+  definition workspace {
+  	// if you want folders instead of recursive workspaces, change that here
+  	// authority=org
+  	relation parent: workspace | organization
+  	relation user_grant: role_binding
+  	relation entitlement_grant: entitlement_binding // with expiration
+
+  	// synthetic relation for hierarchy
+  	// requires repeating all entitlement_sets at workspace & org levels though
+  	// Note: it's important this permission name does NOT collid with organization content_provider which
+  	// is not meant to be inherited
+  	permission granted_content_provider = entitlement_grant->content_provider
+  	permission content_host_provide_content = granted_content_provider + parent->content_host_provide_content
+  
+  	permission content_register_host = user_grant->content_register_host + parent->content_register_host
+  	permission content_host_manage_subscription = user_grant->content_host_manage_subscription + parent->content_host_manage_subscription
+
+  	// Openshift namespace
+  	permission openshift_metrics_report = (user_grant->openshift_metrics_report & entitlement_grant->openshift_metrics_entitled) + parent->openshift_metrics_report
+
+  	permission dispatcher_view_remediations = user_grant->dispatcher_view_remediations + parent->dispatcher_view_remediations
+      permission dispatcher_view_configmanager = user_grant->dispatcher_view_configmanager + parent->dispatcher_view_configmanager
+      permission dispatcher_view_tasks = user_grant->dispatcher_view_tasks + parent->dispatcher_view_tasks
+
+  // <GENERATED_WORKSPACE_PERMS_HERE>
+  }
+
+  definition entitlement_set {
+  	relation provider: entitlement_set
+
+  	// content namespace
+  	relation direct_content_provider: content/repository
+
+  	// allows hierarchical entitlement_set sets
+  	permission content_provider = direct_content_provider + provider->content_provider
+
+  	// support namespace
+  	relation direct_support_case_entitled: user:*
+
+  	// observability namespace
+  	relation direct_openshift_metrics_entitled: user:*
+  
+  	permission openshift_metrics_entitled = direct_openshift_metrics_entitled + provider->openshift_metrics_entitled
+
+  // <GENERATED_ENTITLEMENT_PERMS_HERE>
+  }
+
+  definition entitlement_binding {
+  	// this makes lifecycle tied to an organization or workspace's entitlement
+  	relation arbiter: entitlement_set | entitlement_binding
+  	relation grant: entitlement_set
+
+  	permission content_provider = arbiter->content_provider & grant->content_provider
+
+  	permission openshift_metrics_entitled = arbiter->openshift_metrics_entitled & grant->openshift_metrics_entitled
+
+  // <GENERATED_ENTITLEMENTBINDING_PERMS_HERE>
+  }
+
+  definition content/repository {
+  }
+
+  definition content/host {
+  	relation workspace: workspace
+  	relation user_grant: role_binding
+
+  	permission manage_subscription = user_grant->content_host_manage_subscription + workspace->content_host_manage_subscription
+
+  	// find path to entitled repository
+  	permission provide_content = workspace->content_host_provide_content
+  }
+
+  definition openshift/cluster {
+  	relation workspace: workspace
+  	relation user_grant: role_binding
+  	relation entitlement_grant: entitlement_set | entitlement_binding
+
+  	permission metrics_report = (user_grant->openshift_metrics_report & entitlement_grant->openshift_metrics_entitled) + workspace->openshift_metrics_report
+  }
+  
+  definition inventory/host {
+    relation group: inventory/host_group
+  
+    permission view = group->view // idea: "ungrouped" hosts land in an "ungrouped" group
+  }
+  
+  definition inventory/host_group {
+    relation user_grant: role_binding
+  
+    permission view = user:*
+  }
+
+  definition dispatcher/run {
+  	relation service: dispatcher/service
+  	relation workspace: workspace
+
+  	permission view = (service->is_remediations & workspace->dispatcher_view_remediations) + (service->is_configmanager & workspace->dispatcher_view_configmanager) + (service->is_tasks & workspace->dispatcher_view_tasks)
+  }
+
+  definition dispatcher/host {
+  	relation run: dispatcher/run
+
+  	permission view = run->view
+  }
+
+  definition dispatcher/service {
+  	relation is_remediations: user:*
+  	relation is_configmanager: user:*
+  	relation is_tasks: user:*
+  }
+  // knowing that a metric with labels...
+  // tenant=openshift
+  // cluster=1
+  // namespace=2
+  // means the resource openshift/namespace:1/2
+  // see if user:u1 is authority over namespace 1/2 metrics
+  // check namespace:1/2#metrics_report@user:u1
+  // then knowing tenant=openshift,
+  // check if that tenant is a metrics provider to that resource (namespace 1/2)
+  // check namespace:1/2#metrics_provider@rhobs/tenant:openshift
+  // this will be gated on whether it has been directly entitled by openshift, or if the cluster,
+  // or the workspace, or the organization has been entitled
+  // we could also name the entitlement after the rhobs tenant
+  // in which case we could combine to a single check with a user-feature-style entitlement
+  definition openshift/namespace {
+  	relation cluster: openshift/cluster
+  	relation user_grant: role_binding
+  	relation entitlement_grant: entitlement_set | entitlement_binding
+
+  	permission metrics_report = (user_grant->openshift_metrics_report & entitlement_grant->openshift_metrics_entitled) + cluster->metrics_report
+  }
+
+  // <GENERATED_DEFINITIONS_HERE
+relationships: |-
+  workspace:costco_root#parent@organization:costco
+
+  dispatcher/service:remediations#is_remediations@user:*
+  dispatcher/service:configmanager#is_configmanager@user:*
+  dispatcher/service:tasks#is_tasks@user:*
+
+  role:remediations_admin#dispatcher_view_remediations@user:*
+  role:configmanager_admin#dispatcher_view_configmanager@user:*
+  role:tasks_admin#dispatcher_view_tasks@user:*
+
+  role_binding:costco_remediations_admins#granted@role:remediations_admin
+  role_binding:costco_remediations_admins#subject@user:lauren
+  workspace:costco_root#user_grant@role_binding:costco_remediations_admins
+
+  role_binding:costco_configmanager_admins#granted@role:configmanager_admin
+  role_binding:costco_configmanager_admins#subject@user:ivan
+  workspace:costco_root#user_grant@role_binding:costco_configmanager_admins
+assertions: null
+validation: {}
