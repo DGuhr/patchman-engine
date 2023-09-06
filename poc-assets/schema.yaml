@@ -222,11 +222,10 @@ relationships: |-
     
     //setup inventory groups
     // TODO later.
-    
+
     // setup hosts
     inventory/host:costco_host1#workspace@workspace:costco_root
     inventory/host:costco_host2#workspace@workspace:costco_root
-    // TODO inventory/host:costco_host2#group@
     inventory/host:costco_specialhost1#workspace@workspace:costco_special
     inventory/host:costco_specialhost2#workspace@workspace:costco_special
 
@@ -235,6 +234,10 @@ relationships: |-
     patching/system_platform:syspf2#host@inventory/host:costco_specialhost1
     patching/system_platform:syspf2#host@inventory/host:costco_specialhost1
 
+     // TODO: add hosts to groups. inventory/host:costco_host2#group@...
+
+    // TODO: Role
+    
     // role bindings
     // read, GET + POST
     role_binding:costco_patch_viewer#granted@role:patch_reader
@@ -243,6 +246,8 @@ relationships: |-
 
     // admins: all of the above + system. also here: do we need a permission in role?
     role_binding:costco_patch_admins#granted@role:patch_edit_system
+    
+    // TODO add rolebindings to workspaces and users(?)
 
 # dispatcher/service:remediations#is_remediations@user:*
     # dispatcher/service:configmanager#is_configmanager@user:*
