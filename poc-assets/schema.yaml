@@ -234,8 +234,17 @@ relationships: |-
     patching/system_platform:syspf1#host@inventory/host:costco_host2
     patching/system_platform:syspf2#host@inventory/host:costco_specialhost1
     patching/system_platform:syspf2#host@inventory/host:costco_specialhost1
-    
-    # dispatcher/service:remediations#is_remediations@user:*
+
+    // role bindings
+    // read, GET + POST
+    role_binding:costco_patch_viewer#granted@role:patch_reader
+    // write, GET + POST + Write-Ops (do we need a permission here in role?)
+    role_binding:costco_patch_editors#granted@role:patch_edit_template
+
+    // admins: all of the above + system. also here: do we need a permission in role?
+    role_binding:costco_patch_admins#granted@role:patch_edit_system
+
+# dispatcher/service:remediations#is_remediations@user:*
     # dispatcher/service:configmanager#is_configmanager@user:*
     # dispatcher/service:tasks#is_tasks@user:*
     # 
