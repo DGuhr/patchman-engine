@@ -159,8 +159,6 @@ schema: |-
       permission workspace = host->workspace //synthetic relation to reach the host's workspace
 
       permission view = host->view
-      permission delete = workspace->patch_edit_template // TODO
-
     }
 
     definition inventory/host {
@@ -218,19 +216,39 @@ schema: |-
 
     // <GENERATED_DEFINITIONS_HERE
 relationships: |-
-  content/host:h1#workspace@workspace:w1
-  workspace:w1#parent@workspace:w2
-  workspace:w2#parent@organization:o1
-  entitlement_set:ent1#direct_content_provider@content/repository:repo1
-  entitlement_set:ent1#direct_content_provider@content/repository:repo2
-  entitlement_set:just_repo_1#direct_content_provider@content/repository:repo1
-  organization:o1#entitlement_grant@entitlement_set:ent1
-  entitlement_binding:dent1#arbiter@entitlement_set:ent1
-  entitlement_binding:dent1#grant@entitlement_set:just_repo_1
-  workspace:w2#entitlement_grant@entitlement_binding:dent1
-  role:content_admin#content_host_manage_subscription@user:*
-  role_binding:u1_admin#subject@user:u1
-  role_binding:u1_admin#granted@role:content_admin
-  workspace:w2#user_grant@role_binding:u1_admin
+    //setup workspaces
+    workspace:costco_root#parent@organization:costco
+    workspace:costco_special#parent@organization:costco
+    
+    //setup inventory groups
+    // TODO later.
+    
+    // setup hosts
+    inventory/host:costco_host1#workspace@workspace:costco_root
+    inventory/host:costco_host2#workspace@workspace:costco_root
+    // TODO inventory/host:costco_host2#group@
+    inventory/host:costco_specialhost1#workspace@workspace:costco_special
+    inventory/host:costco_specialhost2#workspace@workspace:costco_special
+
+    patching/system_platform:syspf1#host@inventory/host:costco_host1
+    patching/system_platform:syspf1#host@inventory/host:costco_host2
+    patching/system_platform:syspf2#host@inventory/host:costco_specialhost1
+    patching/system_platform:syspf2#host@inventory/host:costco_specialhost1
+    
+    # dispatcher/service:remediations#is_remediations@user:*
+    # dispatcher/service:configmanager#is_configmanager@user:*
+    # dispatcher/service:tasks#is_tasks@user:*
+    # 
+    # role:remediations_admin#dispatcher_view_remediations@user:*
+    # role:configmanager_admin#dispatcher_view_configmanager@user:*
+    # role:tasks_admin#dispatcher_view_tasks@user:*
+    # 
+    # role_binding:costco_remediations_admins#granted@role:remediations_admin
+    # role_binding:costco_remediations_admins#subject@user:lauren
+    # workspace:costco_root#user_grant@role_binding:costco_remediations_admins
+    # 
+    # role_binding:costco_configmanager_admins#granted@role:configmanager_admin
+    # role_binding:costco_configmanager_admins#subject@user:ivan
+    # workspace:costco_root#user_grant@role_binding:costco_configmanager_admins
 assertions: null
 validation: {}
