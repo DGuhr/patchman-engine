@@ -62,6 +62,9 @@ func (s *SpiceDbAccessRepository) NewConnection(spiceDbEndpoint string, token st
 	s.ctx = context.Background()
 	return nil
 }
+
+// TODO: define CheckAccess etc
+
 func createSubjectObjectTuple(subjectType string, subjectValue string, objectType string, objectValue string) (*v1.SubjectReference, *v1.ObjectReference) {
 	subject := &v1.SubjectReference{Object: &v1.ObjectReference{
 		ObjectType: subjectType,
