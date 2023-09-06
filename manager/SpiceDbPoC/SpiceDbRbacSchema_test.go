@@ -27,11 +27,16 @@ func TestMain(m *testing.M) {
 // TODO: what are good test cases? look at schema and prbac
 
 // e.g. this one (just a braindump-outline)
-func TestUser_With_Patch_Read_Permission_Can_Access_Get(t *testing.T) {
+func TestUser_With_Patch_Read_Permission_Can_Access_Advisory_Get(t *testing.T) {
 	// TODO
 }
 
 // or this one (just a braindump-outline)
-func TestUser_Without_Inventory_Read_Permission_Does_Not_See_Anything(t *testing.T) {
+func TestUser_Without_Inventory_Read_Permission_Cannot_Acces_Advisories(t *testing.T) {
+	// TODO
+}
+
+//and then go on somewhat like this:
+func TestUser_With_PatchRead_and_Inventory_sees_Advisories_for_these_groups_only(t *testing.T) {
 	// TODO
 }
