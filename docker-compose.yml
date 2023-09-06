@@ -1,6 +1,46 @@
 version: '3.4'
 
 services:
+  # spiceDB service
+  spicedb:
+    image: "authzed/spicedb"
+    volumes:
+       - "./authz_external/spicedb_bootstrap.yaml:/mnt/spicedb_bootstrap.yaml"
+    command: "serve"
+    restart: "always"
+    ports:
+      - "8086:8086"
+      - "9090:9090"
+      - "50051:50051"
+    environment:
+      - "SPICEDB_DATASTORE_BOOTSTRAP_FILES=/mnt/spicedb_bootstrap.yaml"
+      - "SPICEDB_DATASTORE_BOOTSTRAP_OVERWRITE=true"
+      - "SPICEDB_GRPC_PRESHARED_KEY=foobar"
+      - "SPICEDB_DATASTORE_ENGINE=postgres"
+      - "SPICEDB_DATASTORE_CONN_URI=postgres://postgres:secret@database:5434/spicedb?sslmode=disable"
+    depends_on:
+      - "migrate"
+  migrate:
+    image: "authzed/spicedb"
+    command: "migrate head"
+    restart: "on-failure"
+    environment:
+      - "SPICEDB_DATASTORE_ENGINE=postgres"
+      - "SPICEDB_DATASTORE_CONN_URI=postgres://postgres:secret@database:5434/spicedb?sslmode=disable"
+    depends_on:
+      - "database"
+  # Postgres database used for spicedb      
+  database:
+    image: "postgres"
+    ports:
+      - "5434:5434"
+    expose:
+      - "5434" # Publishes 5434 to other containers but NOT to host machine
+    environment:
+      - "POSTGRES_PASSWORD=secret"
+      - "POSTGRES_DB=spicedb"
+    command: -p 5434
+
   patchimg:
     build:
       context: .
