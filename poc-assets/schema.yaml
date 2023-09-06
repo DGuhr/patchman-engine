@@ -237,14 +237,15 @@ relationships: |-
      // TODO: add hosts to groups. inventory/host:costco_host2#group@...
 
     // TODO: Role
+    role:patch_reader#patch_reader@user:*
+    role:patch_readwrite#patch_edit_template@user:*
+    role:patch_admin#patch_edit_system@user:*
     
-    // role bindings
-    // read, GET + POST
+    // role bindings - read, GET + POST  / write, GET + POST + Write-Ops / admin (do we need a permission here in role as these are supersets of the others?)
+
     role_binding:costco_patch_viewer#granted@role:patch_reader
-    // write, GET + POST + Write-Ops (do we need a permission here in role?)
     role_binding:costco_patch_editors#granted@role:patch_edit_template
 
-    // admins: all of the above + system. also here: do we need a permission in role?
     role_binding:costco_patch_admins#granted@role:patch_edit_system
     
     // TODO add rolebindings to workspaces and users(?)
