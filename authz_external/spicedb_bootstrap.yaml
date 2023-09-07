@@ -153,25 +153,16 @@ schema: |-
     	permission metrics_report = (user_grant->openshift_metrics_report & entitlement_grant->openshift_metrics_entitled) + workspace->openshift_metrics_report
     }
 
-    definition patching/system_platform {
-      relation host: inventory/host
-
-      permission workspace = host->workspace //synthetic relation to reach the host's workspace
-
-      permission view = host->view
-    }
-
     definition inventory/host {
       relation workspace: workspace
-      relation group: inventory/host_group
 
-      permission view = workspace->inventory_view_hosts + group->view // idea: "ungrouped" hosts land in an "ungrouped" group
+      permission view = workspace->inventory_view_hosts
     }
 
-    definition inventory/host_group { //question: is this needed now? this allows a different dimension for assigning permissions, but do workspaces do the job of host groups better?
-      relation user_grant: role_binding
+    definition patch/advisory {
+        relation host: inventory/host
 
-      permission view = user_grant->inventory_view_hosts
+        permission view = host->view // stub
     }
 
     definition dispatcher/run {
@@ -228,10 +219,6 @@ relationships: |-
     inventory/host:costco_host2#workspace@workspace:costco_root
     inventory/host:costco_specialhost1#workspace@workspace:costco_special
     inventory/host:costco_specialhost2#workspace@workspace:costco_special
-
-    patching/system_platform:syspf1#host@inventory/host:costco_host1
-    patching/system_platform:syspf1#host@inventory/host:costco_host2
-    patching/system_platform:syspf2#host@inventory/host:costco_specialhost1
 
      // TODO: add hosts to groups. inventory/host:costco_host2#group@...
 
