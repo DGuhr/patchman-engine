@@ -40,7 +40,7 @@ import (
 func AdvisorySystemsExportHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 
 	advisoryName := c.Param("advisory_id")
 	if advisoryName == "" {
@@ -60,7 +60,7 @@ func AdvisorySystemsExportHandler(c *gin.Context) {
 		return
 	}
 
-	query := buildAdvisorySystemsQuery(db, account, groups, advisoryName, apiver)
+	query := buildAdvisorySystemsQuery(db, account, authzHosts, advisoryName, apiver)
 	filters, err := ParseAllFilters(c, AdvisorySystemOpts)
 	if err != nil {
 		return

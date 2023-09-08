@@ -26,19 +26,19 @@ import (
 func PackagesExportHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 	filters, err := ParseAllFilters(c, PackagesOpts)
 	if err != nil {
 		return
 	}
 
 	db := middlewares.DBFromContext(c)
-	useCache := shouldUseCache(db, account, filters, groups)
+	useCache := shouldUseCache(db, account, filters, authzHosts)
 	if !useCache {
 		db.Exec("SET work_mem TO '?'", utils.Cfg.DBWorkMem)
 		defer db.Exec("RESET work_mem")
 	}
-	query := packagesQuery(db, filters, account, groups, useCache)
+	query := packagesQuery(db, filters, account, authzHosts, useCache)
 	if err != nil {
 		return
 	}

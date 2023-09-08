@@ -45,7 +45,7 @@ type SystemPackageInlineV3 struct {
 func SystemPackagesExportHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 
 	inventoryID := c.Param("inventory_id")
 	if inventoryID == "" {
@@ -60,7 +60,7 @@ func SystemPackagesExportHandler(c *gin.Context) {
 
 	var loaded []SystemPackageDBLoad
 	db := middlewares.DBFromContext(c)
-	q := systemPackageQuery(db, account, groups, inventoryID)
+	q := systemPackageQuery(db, account, authzHosts, inventoryID)
 	q, err := ExportListCommon(q, c, SystemPackagesOpts)
 	if err != nil {
 		// Error handling and setting of result code & content is done in ListCommon

@@ -1,10 +1,15 @@
 package controllers
 
 import (
+	"app/authz_external"
 	"app/base/database"
 	"app/base/utils"
 	"app/manager/middlewares"
+	"context"
 	"encoding/json"
+	"errors"
+	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -29,6 +34,11 @@ var SystemOpts = ListOpts{
 	StableSort:   "id",
 	SearchFields: []string{"sp.display_name"},
 }
+
+var (
+	spiceDBURL   = "spicedb:50051"
+	spiceDBToken = "foobar"
+)
 
 type SystemsID struct {
 	ID string `query:"sp.inventory_id" gorm:"column:id"`
@@ -168,12 +178,54 @@ type SystemsResponseV3 struct {
 	Meta  ListMeta       `json:"meta"`
 }
 
+func getAuthorizedHosts(user string) (hosts []string) {
+	spiceDBClient, err := authz_external.GetSpiceDbClient(spiceDBURL, spiceDBToken)
+
+	if err != nil {
+		utils.LogError("Can't connect to spicedb: %1", err)
+		return []string{}
+	}
+
+	permission := "view"
+	userType := "user"
+	hostType := "inventory/host"
+	lrClient, err := spiceDBClient.LookupResources(context.TODO(), &v1.LookupResourcesRequest{
+		ResourceObjectType: hostType,
+		Permission:         permission,
+		Subject: &v1.SubjectReference{
+			Object: &v1.ObjectReference{
+				ObjectType: userType,
+				ObjectId:   user,
+			},
+		},
+	})
+
+	if err != nil {
+		return []string{}
+	}
+
+	for {
+		next, err := lrClient.Recv()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return []string{}
+		}
+
+		hosts = append(hosts, next.GetResourceObjectId())
+	}
+
+	return
+}
+
 func systemsCommon(c *gin.Context, apiver int) (*gorm.DB, *ListMeta, []string, error) {
 	var err error
+	user := c.GetString(middlewares.KeyUser)
+	authzHosts := getAuthorizedHosts(user) // this is a convenient place for demo purposes, but a spicedb error should be handled better and elsewhere
 	account := c.GetInt(middlewares.KeyAccount)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
 	db := middlewares.DBFromContext(c)
-	query := querySystems(db, account, apiver, groups)
+	query := querySystems(db, account, apiver, authzHosts)
 	filters, err := ParseAllFilters(c, SystemOpts)
 	if err != nil {
 		return nil, nil, nil, err
@@ -322,8 +374,8 @@ func SystemsListIDsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, &resp)
 }
 
-func querySystems(db *gorm.DB, account, apiver int, groups map[string]string) *gorm.DB {
-	q := database.Systems(db, account, groups).
+func querySystems(db *gorm.DB, account, apiver int, authzHosts []string) *gorm.DB {
+	q := database.Systems(db, account, authzHosts).
 		Joins("LEFT JOIN baseline bl ON sp.baseline_id = bl.id AND sp.rh_account_id = bl.rh_account_id")
 	if apiver < 3 {
 		return q.Select(SystemsSelectV2)
