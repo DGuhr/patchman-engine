@@ -35,7 +35,7 @@ var AdvisorySystemOpts = ListOpts{
 func advisorySystemsCommon(c *gin.Context) (*gorm.DB, *ListMeta, []string, error) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 
 	advisoryName := c.Param("advisory_id")
 	if advisoryName == "" {
@@ -57,7 +57,7 @@ func advisorySystemsCommon(c *gin.Context) (*gorm.DB, *ListMeta, []string, error
 		return nil, nil, nil, err
 	}
 
-	query := buildAdvisorySystemsQuery(db, account, groups, advisoryName, apiver)
+	query := buildAdvisorySystemsQuery(db, account, authzHosts, advisoryName, apiver)
 	opts := AdvisorySystemOptsV3
 	if apiver < 3 {
 		opts = AdvisorySystemOpts
@@ -210,13 +210,13 @@ func AdvisorySystemsListIDsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, &resp)
 }
 
-func buildAdvisorySystemsQuery(db *gorm.DB, account int, groups map[string]string, advisoryName string, apiver int,
+func buildAdvisorySystemsQuery(db *gorm.DB, account int, authzHosts []string, advisoryName string, apiver int,
 ) *gorm.DB {
 	selectQuery := AdvisorySystemsSelect
 	if apiver < 3 {
 		selectQuery = SystemsSelectV2
 	}
-	query := database.SystemAdvisories(db, account, groups).
+	query := database.SystemAdvisories(db, account, authzHosts).
 		Select(selectQuery).
 		Joins("JOIN advisory_metadata am ON am.id = sa.advisory_id").
 		Joins("LEFT JOIN status st ON sa.status_id = st.id").

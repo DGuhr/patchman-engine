@@ -70,9 +70,9 @@ func packagesByNameQuery(db *gorm.DB, pkgName string) *gorm.DB {
 		Where("pn.name = ?", pkgName)
 }
 
-func packageSystemsQuery(db *gorm.DB, acc int, groups map[string]string, packageName string, packageIDs []int,
+func packageSystemsQuery(db *gorm.DB, acc int, authzHosts []string, packageName string, packageIDs []int,
 ) *gorm.DB {
-	query := database.SystemPackages(db, acc, groups).
+	query := database.SystemPackages(db, acc, authzHosts).
 		Select(PackageSystemsSelect).
 		Joins("LEFT JOIN baseline bl ON sp.baseline_id = bl.id AND sp.rh_account_id = bl.rh_account_id").
 		Where("sp.stale = false").
@@ -84,7 +84,7 @@ func packageSystemsQuery(db *gorm.DB, acc int, groups map[string]string, package
 
 func packageSystemsCommon(db *gorm.DB, c *gin.Context) (*gorm.DB, *ListMeta, []string, error) {
 	account := c.GetInt(middlewares.KeyAccount)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 	var filters map[string]FilterData
 
 	packageName := c.Param("package_name")
@@ -104,7 +104,7 @@ func packageSystemsCommon(db *gorm.DB, c *gin.Context) (*gorm.DB, *ListMeta, []s
 		return nil, nil, nil, errors.New("package not found")
 	}
 
-	query := packageSystemsQuery(db, account, groups, packageName, packageIDs)
+	query := packageSystemsQuery(db, account, authzHosts, packageName, packageIDs)
 	filters, err := ParseAllFilters(c, PackageSystemsOpts)
 	if err != nil {
 		return nil, nil, nil, err

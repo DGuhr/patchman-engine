@@ -64,11 +64,11 @@ var SystemTagsOpts = ListOpts{
 func SystemTagListHandler(c *gin.Context) {
 	var err error
 	account := c.GetInt(middlewares.KeyAccount)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 
 	db := middlewares.DBFromContext(c)
 	// https://stackoverflow.com/questions/33474778/how-to-group-result-by-array-column-in-postgres
-	sq := database.Systems(db, account, groups).
+	sq := database.Systems(db, account, authzHosts).
 		Select("jsonb_array_elements(ih.tags) AS tag")
 
 	query := db.Table("(?) AS sq", sq).

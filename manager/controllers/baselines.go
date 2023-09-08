@@ -83,14 +83,14 @@ type BaselinesResponse struct {
 func BaselinesListHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 	filters, err := ParseAllFilters(c, BaselineOpts)
 	if err != nil {
 		return
 	}
 
 	db := middlewares.DBFromContext(c)
-	query := buildQueryBaselines(db, filters, account, groups)
+	query := buildQueryBaselines(db, filters, account, authzHosts)
 	if err != nil {
 		return
 	} // Error handled in method itself
@@ -129,8 +129,8 @@ func BaselinesListHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, &resp)
 }
 
-func buildQueryBaselines(db *gorm.DB, filters map[string]FilterData, account int, groups map[string]string) *gorm.DB {
-	subq := database.Systems(db, account, groups).
+func buildQueryBaselines(db *gorm.DB, filters map[string]FilterData, account int, authzHosts []string) *gorm.DB {
+	subq := database.Systems(db, account, authzHosts).
 		Select("sp.baseline_id, count(sp.inventory_id) as systems").
 		Group("sp.baseline_id")
 

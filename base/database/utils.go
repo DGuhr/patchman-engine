@@ -2,7 +2,6 @@ package database
 
 import (
 	"app/base/models"
-	"app/base/rbac"
 	"app/base/types"
 	"app/base/utils"
 	"errors"
@@ -17,13 +16,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func Systems(tx *gorm.DB, accountID int, groups map[string]string) *gorm.DB {
+func Systems(tx *gorm.DB, accountID int, authzHosts []string) *gorm.DB {
 	tx = tx.Table("system_platform sp").Where("sp.rh_account_id = ?", accountID)
-	return InventoryHostsJoin(tx, groups)
+	return InventoryHostsJoin(tx, authzHosts)
 }
 
-func SystemAdvisories(tx *gorm.DB, accountID int, groups map[string]string) *gorm.DB {
-	return Systems(tx, accountID, groups).
+func SystemAdvisories(tx *gorm.DB, accountID int, authzHosts []string) *gorm.DB {
+	return Systems(tx, accountID, authzHosts).
 		Joins("JOIN system_advisories sa on sa.system_id = sp.id AND sa.rh_account_id = ?", accountID)
 }
 
@@ -32,8 +31,8 @@ func SystemPackagesShort(tx *gorm.DB, accountID int) *gorm.DB {
 		Where("spkg.rh_account_id = ?", accountID)
 }
 
-func SystemPackages(tx *gorm.DB, accountID int, groups map[string]string) *gorm.DB {
-	return Systems(tx, accountID, groups).
+func SystemPackages(tx *gorm.DB, accountID int, authzHosts []string) *gorm.DB {
+	return Systems(tx, accountID, authzHosts).
 		Joins("JOIN system_package spkg on spkg.system_id = sp.id AND spkg.rh_account_id = ?", accountID).
 		Joins("JOIN package p on p.id = spkg.package_id").
 		Joins("JOIN package_name pn on pn.id = spkg.name_id")
@@ -51,8 +50,8 @@ func PackageByName(tx *gorm.DB, pkgName string) *gorm.DB {
 	return Packages(tx).Where("pn.name = ?", pkgName)
 }
 
-func SystemAdvisoriesByInventoryID(tx *gorm.DB, accountID int, groups map[string]string, inventoryID string) *gorm.DB {
-	return SystemAdvisories(tx, accountID, groups).Where("sp.inventory_id = ?::uuid", inventoryID)
+func SystemAdvisoriesByInventoryID(tx *gorm.DB, accountID int, authzHosts []string, inventoryID string) *gorm.DB {
+	return SystemAdvisories(tx, accountID, authzHosts).Where("sp.inventory_id = ?::uuid", inventoryID)
 }
 
 func SystemAdvisoriesBySystemID(tx *gorm.DB, accountID int, systemID int64) *gorm.DB {
@@ -219,20 +218,7 @@ func ReadReplicaConfigured() bool {
 	return len(utils.Cfg.DBReadReplicaHost) > 0 && utils.Cfg.DBReadReplicaPort != 0
 }
 
-func InventoryHostsJoin(tx *gorm.DB, groups map[string]string) *gorm.DB {
+func InventoryHostsJoin(tx *gorm.DB, authzHosts []string) *gorm.DB {
 	tx = tx.Joins("JOIN inventory.hosts ih ON ih.id = sp.inventory_id")
-	if _, ok := groups[rbac.KeyGrouped]; !ok {
-		if _, ok := groups[rbac.KeyUngrouped]; ok {
-			// show only systems with '[]' group
-			return tx.Where("ih.groups = '[]'")
-		}
-		// return query without WHERE if there are no groups
-		return tx
-	}
-
-	tx = tx.Where("ih.groups @> ANY (?::jsonb[])", groups[rbac.KeyGrouped])
-	if _, ok := groups[rbac.KeyUngrouped]; ok {
-		tx = tx.Or("ih.groups = '[]'")
-	} // Possible question: ALL hosts or only ungrouped?
-	return tx.Where(tx)
+	return tx.Where("ih.id IN (?)", authzHosts)
 }
