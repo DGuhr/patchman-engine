@@ -6,12 +6,13 @@ import (
 	"app/manager/controllers"
 	"app/manager/middlewares"
 	admin "app/turnpike/controllers"
+	"github.com/authzed/authzed-go/v1"
 
 	"github.com/gin-gonic/gin"
 )
 
-func InitAPI(api *gin.RouterGroup, config docs.EndpointsConfig) { // nolint: funlen
-	api.Use(middlewares.RBAC())
+func InitAPI(api *gin.RouterGroup, config docs.EndpointsConfig, client *authzed.Client) { // nolint: funlen
+	//api.Use(middlewares.RBAC()) TODO: SpiceDB should have its own middleware that sets the client to context, like DatabaseWithContext middleware
 	api.Use(middlewares.PublicAuthenticator())
 	api.Use(middlewares.CheckReferer())
 	api.Use(middlewares.DatabaseWithContext())

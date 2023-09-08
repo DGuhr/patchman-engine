@@ -76,6 +76,10 @@ type Config struct {
 
 	// profiler
 	ProfilerEnabled bool
+
+	//spiceDB
+	SpiceDbUrl string
+	SpiceDbPsk string
 }
 
 func init() {
@@ -87,13 +91,20 @@ func init() {
 		initKafkaFromClowder()
 		initServicesFromClowder()
 		initCloudwatchFromClowder()
+		// ignoring clowder for now for SpiceDB
 	}
 	// init non-clowder setting and allow local overwrites
 	initDBFromEnv()
+	initSpiceDbFromEnv()
 	initKafkaFromEnv()
 	initServicesFromEnv()
 	initPrometheusPushGatewayFromEnv()
 	initProfilerFromEnv()
+}
+
+func initSpiceDbFromEnv() {
+	Cfg.SpiceDbUrl = Getenv("SPICEDB_URL", "")
+	Cfg.SpiceDbPsk = Getenv("SPICEDB_KEY", "")
 }
 
 func initDBFromEnv() {
@@ -283,6 +294,7 @@ func PrintClowderParams() {
 		printServicesParams()
 		// Cloudwatch logging
 		printCloudwatchParams()
+		// ignoring for SpiceDB for now
 	}
 }
 

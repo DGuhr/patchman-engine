@@ -3,7 +3,15 @@ package controllers
 import (
 	"app/base/database"
 	"app/base/rbac"
+	"app/base/utils"
 	"app/manager/middlewares"
+	"context"
+	"fmt"
+	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
+	"github.com/authzed/authzed-go/v1"
+	"github.com/authzed/grpcutil"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"net/http"
 	"time"
 
@@ -117,6 +125,23 @@ type AdvisoriesResponseV3 struct {
 	Meta  ListMeta         `json:"meta"`
 }
 
+// minimally invasive for now, directly initializing spiceDBclient. see other comments for middleware / gin context approach to be done
+func advisoriesSpiceDbEnabledCommon(c *gin.Context) (*authzed.Client, *gorm.DB, *ListMeta, []string, error) {
+	query, meta, params, err := advisoriesCommon(c)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	//setup spiceDB client
+	spiceDbUrl := utils.Cfg.SpiceDbUrl
+	spiceDbKey := utils.Cfg.SpiceDbPsk
+	spiceDbClient, e := getSpiceDbClient(spiceDbUrl, spiceDbKey)
+
+	if e != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return spiceDbClient, query, meta, params, nil
+}
 func advisoriesCommon(c *gin.Context) (*gorm.DB, *ListMeta, []string, error) {
 	db := middlewares.DBFromContext(c)
 	account := c.GetInt(middlewares.KeyAccount)
@@ -176,10 +201,15 @@ func advisoriesCommon(c *gin.Context) (*gorm.DB, *ListMeta, []string, error) {
 // @Router /advisories [get]
 func AdvisoriesListHandler(c *gin.Context) {
 	apiver := c.GetInt(middlewares.KeyApiver)
-	query, meta, params, err := advisoriesCommon(c)
+	//query, meta, params, err := advisoriesCommon(c)
+	sdbClient, query, meta, params, err := advisoriesSpiceDbEnabledCommon(c)
 	if err != nil {
 		return
 	} // Error handled in method itself
+
+	schema, err := sdbClient.SchemaServiceClient.ReadSchema(context.TODO(), &v1.ReadSchemaRequest{})
+	//just to check if it works.
+	fmt.Println(schema.SchemaText)
 
 	var advisories []AdvisoriesDBLookupV3
 	err = query.Find(&advisories).Error
@@ -342,4 +372,18 @@ func advisoryItemV3toV2(items []AdvisoryItemV3) []AdvisoryItemV2 {
 		}
 	}
 	return itemsV2
+}
+
+func getSpiceDbClient(endpoint string, presharedKey string) (*authzed.Client, error) {
+	var opts []grpc.DialOption
+
+	opts = append(opts, grpc.WithBlock())
+
+	opts = append(opts, grpcutil.WithInsecureBearerToken(presharedKey))
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	return authzed.NewClient(
+		endpoint,
+		opts...,
+	)
 }

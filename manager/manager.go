@@ -10,9 +10,12 @@ import (
 	"app/manager/kafka"
 	"app/manager/middlewares"
 	"app/manager/routes"
-
+	"github.com/authzed/authzed-go/v1"
+	"github.com/authzed/grpcutil"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var basepaths = []string{"/api/patch/v1", "/api/patch/v2", "/api/patch/v3"}
@@ -38,6 +41,16 @@ func RunManager() {
 
 	port := utils.Cfg.PublicPort
 	utils.LogInfo("port", port, "Manager starting at port")
+
+	//setup spiceDB client
+	spiceDbUrl := utils.Cfg.SpiceDbUrl
+	spiceDbKey := utils.Cfg.SpiceDbPsk
+	spiceDbClient, e := getSpiceDbClient(spiceDbUrl, spiceDbKey)
+
+	if e != nil {
+		panic("failed to get connection to spiceDB for authz!")
+	}
+
 	// create web app
 	app := gin.New()
 
@@ -55,7 +68,7 @@ func RunManager() {
 	core.InitProbes(app)
 	for _, path := range basepaths {
 		api := app.Group(path)
-		routes.InitAPI(api, endpointsConfig)
+		routes.InitAPI(api, endpointsConfig, spiceDbClient)
 	}
 
 	// profiler
@@ -79,4 +92,18 @@ func getEndpointsConfig() docs.EndpointsConfig {
 		EnableBaselines: utils.GetBoolEnvOrDefault("ENABLE_BASELINES_API", true),
 	}
 	return config
+}
+
+func getSpiceDbClient(endpoint string, presharedKey string) (*authzed.Client, error) {
+	var opts []grpc.DialOption
+
+	opts = append(opts, grpc.WithBlock())
+
+	opts = append(opts, grpcutil.WithInsecureBearerToken(presharedKey))
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	return authzed.NewClient(
+		endpoint,
+		opts...,
+	)
 }
