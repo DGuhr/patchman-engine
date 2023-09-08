@@ -1,18 +1,19 @@
 package controllers
 
 import (
-	"app/authz_external"
 	"app/base/database"
 	"app/base/utils"
+	"app/manager/authz_external"
 	"app/manager/middlewares"
 	"context"
 	"encoding/json"
 	"errors"
-	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
