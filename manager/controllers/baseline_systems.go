@@ -86,7 +86,7 @@ type BaselineSystemsResponse struct {
 	Meta  ListMeta             `json:"meta"`
 }
 
-func queryBaselineSystems(c *gin.Context, account, apiver int, groups map[string]string) (*gorm.DB, error) {
+func queryBaselineSystems(c *gin.Context, account, apiver int, authzHosts []string) (*gorm.DB, error) {
 	baselineID := c.Param("baseline_id")
 	id, err := strconv.ParseInt(baselineID, 10, 64)
 	if err != nil {
@@ -107,7 +107,7 @@ func queryBaselineSystems(c *gin.Context, account, apiver int, groups map[string
 		return nil, err
 	}
 
-	query := buildQueryBaselineSystems(db, account, groups, id, apiver)
+	query := buildQueryBaselineSystems(db, account, authzHosts, id, apiver)
 	filters, err := ParseAllFilters(c, BaselineSystemOpts)
 	if err != nil {
 		return nil, err
@@ -116,9 +116,9 @@ func queryBaselineSystems(c *gin.Context, account, apiver int, groups map[string
 	return query, nil
 }
 
-func baselineSystemsCommon(c *gin.Context, account, apiver int, groups map[string]string,
+func baselineSystemsCommon(c *gin.Context, account, apiver int, authzHosts []string,
 ) (*gorm.DB, *ListMeta, []string, error) {
-	query, err := queryBaselineSystems(c, account, apiver, groups)
+	query, err := queryBaselineSystems(c, account, apiver, authzHosts)
 	if err != nil {
 		return nil, nil, nil, err
 	} // Error handled in method itself
@@ -167,9 +167,9 @@ func baselineSystemsCommon(c *gin.Context, account, apiver int, groups map[strin
 func BaselineSystemsListHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 
-	query, meta, params, err := baselineSystemsCommon(c, account, apiver, groups)
+	query, meta, params, err := baselineSystemsCommon(c, account, apiver, authzHosts)
 	if err != nil {
 		return
 	} // Error handled in method itself
@@ -222,13 +222,13 @@ func BaselineSystemsListHandler(c *gin.Context) {
 func BaselineSystemsListIDsHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 	if apiver < 3 {
 		c.AbortWithStatus(404)
 		return
 	}
 
-	query, meta, _, err := baselineSystemsCommon(c, account, apiver, groups)
+	query, meta, _, err := baselineSystemsCommon(c, account, apiver, authzHosts)
 	if err != nil {
 		return
 	} // Error handled in method itself
@@ -248,9 +248,9 @@ func BaselineSystemsListIDsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, &resp)
 }
 
-func buildQueryBaselineSystems(db *gorm.DB, account int, groups map[string]string, baselineID int64, apiver int,
+func buildQueryBaselineSystems(db *gorm.DB, account int, authzHosts []string, baselineID int64, apiver int,
 ) *gorm.DB {
-	query := database.Systems(db, account, groups).
+	query := database.Systems(db, account, authzHosts).
 		Where("sp.baseline_id = ?", baselineID)
 	if apiver < 3 {
 		query.Select(BaselineSystemSelectV2)

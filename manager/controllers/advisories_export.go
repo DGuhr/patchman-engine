@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"app/base/rbac"
 	"app/manager/middlewares"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +28,7 @@ import (
 // @Router /export/advisories [get]
 func AdvisoriesExportHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 	filters, err := ParseAllFilters(c, AdvisoriesOpts)
 	if err != nil {
 		return
@@ -37,9 +36,9 @@ func AdvisoriesExportHandler(c *gin.Context) {
 	db := middlewares.DBFromContext(c)
 	var query *gorm.DB
 
-	if disableCachedCounts || HasInventoryFilter(filters) || len(groups[rbac.KeyGrouped]) != 0 {
+	if disableCachedCounts || HasInventoryFilter(filters) || len(authzHosts) != 0 { // TODO: see if this logic still makes sense after replacing inventory groups condition
 		var err error
-		query = buildQueryAdvisoriesTagged(db, filters, account, groups)
+		query = buildQueryAdvisoriesTagged(db, filters, account, authzHosts)
 		if err != nil {
 			return
 		} // Error handled in method itself

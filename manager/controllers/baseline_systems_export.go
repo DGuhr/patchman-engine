@@ -35,14 +35,14 @@ import (
 func BaselineSystemsExportHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 	if apiver < 3 {
 		err := fmt.Errorf("endpoint does not exist in v%d API, use API >= v3", apiver)
 		LogAndRespNotFound(c, err, err.Error())
 		return
 	}
 
-	query, err := queryBaselineSystems(c, account, apiver, groups)
+	query, err := queryBaselineSystems(c, account, apiver, authzHosts)
 	if err != nil {
 		return
 	} // Error handled in method itself

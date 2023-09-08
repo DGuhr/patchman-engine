@@ -53,7 +53,8 @@ type SystemYumUpdatesResponse struct {
 func SystemDetailHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	//groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 
 	inventoryID := c.Param("inventory_id")
 	if inventoryID == "" {
@@ -72,7 +73,7 @@ func SystemDetailHandler(c *gin.Context) {
 
 	var systemDetail SystemDetailLookup
 	db := middlewares.DBFromContext(c)
-	query := database.Systems(db, account, groups).
+	query := database.Systems(db, account, authzHosts).
 		Select(database.MustGetSelect(&systemDetail)).
 		Joins("LEFT JOIN baseline bl ON sp.baseline_id = bl.id AND sp.rh_account_id = bl.rh_account_id").
 		Where("sp.inventory_id = ?::uuid", inventoryID)
@@ -180,7 +181,7 @@ func SystemYumUpdatesHandler(c *gin.Context) {
 
 func systemJSONsCommon(c *gin.Context, column string) *models.SystemPlatform {
 	account := c.GetInt(middlewares.KeyAccount)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 
 	inventoryID := c.Param("inventory_id")
 	if inventoryID == "" {
@@ -199,7 +200,7 @@ func systemJSONsCommon(c *gin.Context, column string) *models.SystemPlatform {
 
 	var system models.SystemPlatform
 	db := middlewares.DBFromContext(c)
-	query := database.Systems(db, account, groups).
+	query := database.Systems(db, account, authzHosts).
 		Select(column).
 		Where("sp.inventory_id = ?::uuid", inventoryID)
 

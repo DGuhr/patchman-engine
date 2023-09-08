@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"app/base/database"
-	"app/base/rbac"
 	"app/base/utils"
 	"app/manager/middlewares"
 	"net/http"
@@ -85,7 +84,7 @@ type queryItem struct {
 var queryItemSelect = database.MustGetSelect(&queryItem{})
 
 // nolint: lll
-func packagesQuery(db *gorm.DB, filters map[string]FilterData, acc int, groups map[string]string, useCache bool) *gorm.DB {
+func packagesQuery(db *gorm.DB, filters map[string]FilterData, acc int, authzHosts []string, useCache bool) *gorm.DB {
 	if useCache {
 		q := db.Table("package_account_data res").
 			Select(PackagesSelect).
@@ -93,7 +92,7 @@ func packagesQuery(db *gorm.DB, filters map[string]FilterData, acc int, groups m
 			Where("rh_account_id = ?", acc)
 		return q
 	}
-	systemsWithPkgsInstalledQ := database.Systems(db, acc, groups).
+	systemsWithPkgsInstalledQ := database.Systems(db, acc, authzHosts).
 		Select("sp.id").
 		Where("sp.stale = false AND sp.packages_installed > 0")
 
@@ -143,7 +142,7 @@ func PackagesListHandler(c *gin.Context) {
 	var filters map[string]FilterData
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 
 	filters, err := ParseAllFilters(c, PackagesOpts)
 	if err != nil {
@@ -151,13 +150,13 @@ func PackagesListHandler(c *gin.Context) {
 	}
 
 	db := middlewares.DBFromContext(c)
-	useCache := shouldUseCache(db, account, filters, groups)
+	useCache := shouldUseCache(db, account, filters, authzHosts)
 	if !useCache {
 		db.Exec("SET work_mem TO '?'", utils.Cfg.DBWorkMem)
 		defer db.Exec("RESET work_mem")
 	}
 
-	query := packagesQuery(db, filters, account, groups, useCache)
+	query := packagesQuery(db, filters, account, authzHosts, useCache)
 	if err != nil {
 		return
 	} // Error handled in method itself
@@ -219,13 +218,13 @@ func packages2PackagesV2(data []PackageItem) []PackageItemV2 {
 }
 
 // use cache only when tag filter is not used, there are no inventory groups and cache is valid
-func shouldUseCache(db *gorm.DB, acc int, filters map[string]FilterData, groups map[string]string) bool {
+func shouldUseCache(db *gorm.DB, acc int, filters map[string]FilterData, authzHosts []string) bool {
 	if !enabledPackageCache {
 		return false
 	}
-	if HasInventoryFilter(filters) || len(groups[rbac.KeyGrouped]) != 0 {
+	if HasInventoryFilter(filters) || len(authzHosts) != 0 {
 		return false
-	}
+	} // TODO: check last condition still makes sense
 
 	var validCache bool
 	err := db.Table("rh_account").

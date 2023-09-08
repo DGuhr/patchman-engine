@@ -71,8 +71,8 @@ type SystemPackageDBLoad struct {
 	MetaTotalHelper
 }
 
-func systemPackageQuery(db *gorm.DB, account int, groups map[string]string, inventoryID string) *gorm.DB {
-	query := database.SystemPackages(db, account, groups).
+func systemPackageQuery(db *gorm.DB, account int, authzHosts []string, inventoryID string) *gorm.DB {
+	query := database.SystemPackages(db, account, authzHosts).
 		Joins("LEFT JOIN strings AS descr ON p.description_hash = descr.id").
 		Joins("LEFT JOIN strings AS sum ON p.summary_hash = sum.id").
 		Select(SystemPackagesSelect).
@@ -105,7 +105,7 @@ func systemPackageQuery(db *gorm.DB, account int, groups map[string]string, inve
 func SystemPackagesHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 
 	inventoryID := c.Param("inventory_id")
 	if inventoryID == "" {
@@ -124,7 +124,7 @@ func SystemPackagesHandler(c *gin.Context) {
 	}
 	var loaded []SystemPackageDBLoad
 	db := middlewares.DBFromContext(c)
-	q := systemPackageQuery(db, account, groups, inventoryID)
+	q := systemPackageQuery(db, account, authzHosts, inventoryID)
 	q, meta, params, err := ListCommon(q, c, filters, SystemPackagesOpts)
 	if err != nil {
 		return

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"app/base/database"
-	"app/base/rbac"
 	"app/manager/middlewares"
 	"net/http"
 	"time"
@@ -120,16 +119,16 @@ type AdvisoriesResponseV3 struct {
 func advisoriesCommon(c *gin.Context) (*gorm.DB, *ListMeta, []string, error) {
 	db := middlewares.DBFromContext(c)
 	account := c.GetInt(middlewares.KeyAccount)
-	groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
+	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
 	var query *gorm.DB
 	filters, err := ParseAllFilters(c, AdvisoriesOpts)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	if disableCachedCounts || HasInventoryFilter(filters) || len(groups[rbac.KeyGrouped]) != 0 {
+	if disableCachedCounts || HasInventoryFilter(filters) || len(authzHosts) != 0 { // TODO: see if last condition still makes sense
 		var err error
-		query = buildQueryAdvisoriesTagged(db, filters, account, groups)
+		query = buildQueryAdvisoriesTagged(db, filters, account, authzHosts)
 		if err != nil {
 			return nil, nil, nil, err
 		} // Error handled in method itself
@@ -267,8 +266,8 @@ func buildQueryAdvisories(db *gorm.DB, account int) *gorm.DB {
 	return query
 }
 
-func buildAdvisoryAccountDataQuery(db *gorm.DB, account int, groups map[string]string) *gorm.DB {
-	query := database.SystemAdvisories(db, account, groups).
+func buildAdvisoryAccountDataQuery(db *gorm.DB, account int, authzHosts []string) *gorm.DB {
+	query := database.SystemAdvisories(db, account, authzHosts).
 		Select(`sa.advisory_id, sp.rh_account_id as rh_account_id,
 		        count(sp.*) filter (where sa.status_id = 0) as systems_installable,
 		        count(sp.*) as systems_applicable`).
@@ -278,9 +277,9 @@ func buildAdvisoryAccountDataQuery(db *gorm.DB, account int, groups map[string]s
 	return query
 }
 
-func buildQueryAdvisoriesTagged(db *gorm.DB, filters map[string]FilterData, account int, groups map[string]string,
+func buildQueryAdvisoriesTagged(db *gorm.DB, filters map[string]FilterData, account int, authzHosts []string,
 ) *gorm.DB {
-	subq := buildAdvisoryAccountDataQuery(db, account, groups)
+	subq := buildAdvisoryAccountDataQuery(db, account, authzHosts)
 	subq, _ = ApplyInventoryFilter(filters, subq, "sp.inventory_id")
 
 	query := db.Table("advisory_metadata am").
