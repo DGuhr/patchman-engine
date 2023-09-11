@@ -3,7 +3,7 @@ version: '3.4'
 services:
   # spiceDB service
   spicedb:
-    image: "authzed/spicedb"
+    image: "authzed/spicedb:v1.25.0"
     volumes:
        - "./authz_external/spicedb_bootstrap.yaml:/mnt/spicedb_bootstrap.yaml"
     command: "serve"
@@ -17,29 +17,30 @@ services:
       - "SPICEDB_DATASTORE_BOOTSTRAP_OVERWRITE=true"
       - "SPICEDB_GRPC_PRESHARED_KEY=foobar"
       - "SPICEDB_DATASTORE_ENGINE=postgres"
-      - "SPICEDB_DATASTORE_CONN_URI=postgres://postgres:secret@database:5434/spicedb?sslmode=disable"
+      - "SPICEDB_DATASTORE_CONN_URI=postgres://postgres:secret@spicedb-db:5432/spicedb?sslmode=disable"
     depends_on:
       - "migrate"
+
   migrate:
-    image: "authzed/spicedb"
+    image: "authzed/spicedb:v1.25.0"
     command: "migrate head"
     restart: "on-failure"
     environment:
       - "SPICEDB_DATASTORE_ENGINE=postgres"
-      - "SPICEDB_DATASTORE_CONN_URI=postgres://postgres:secret@database:5434/spicedb?sslmode=disable"
+      - "SPICEDB_DATASTORE_CONN_URI=postgres://postgres:secret@spicedb-db:5432/spicedb?sslmode=disable"
     depends_on:
-      - "database"
+      - "spicedb-db"
+
   # Postgres database used for spicedb      
-  database:
+  spicedb-db:
     image: "postgres"
     ports:
-      - "5434:5434"
+      - "5432:5432"
     expose:
-      - "5434" # Publishes 5434 to other containers but NOT to host machine
+      - "5432"
     environment:
       - "POSTGRES_PASSWORD=secret"
       - "POSTGRES_DB=spicedb"
-    command: -p 5434
 
   patchimg:
     build:
