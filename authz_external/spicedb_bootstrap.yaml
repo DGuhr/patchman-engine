@@ -45,6 +45,7 @@ schema: |-
 
       permission inventory_view_hosts = subject & granted->inventory_view_hosts
 
+      permission patch_reader = subject & granted->patch_reader
       permission patch_edit_template = subject & granted->patch_edit_template
       permission patch_edit_system = subject & granted->patch_edit_system
 
@@ -95,6 +96,7 @@ schema: |-
 
       permission inventory_view_hosts = user_grant->inventory_view_hosts + parent->inventory_view_hosts
 
+      permission patch_reader = user_grant->patch_reader + parent->patch_reader
       permission patch_edit_template = user_grant->patch_edit_template + parent->patch_edit_template
 
     // <GENERATED_WORKSPACE_PERMS_HERE>
@@ -157,12 +159,15 @@ schema: |-
       relation workspace: workspace
 
       permission view = workspace->inventory_view_hosts
+
+      //Patching - synthetic relations for patching resources
+      permission view_patches = view & workspace->patch_reader
     }
 
     definition patch/advisory {
         relation host: inventory/host
 
-        permission view = host->view // stub
+        permission view = host->view_patches
     }
 
     definition dispatcher/run {
@@ -211,10 +216,19 @@ relationships: |-
     workspace:costco_root#parent@organization:costco
     workspace:costco_special#parent@organization:costco
     
-    //setup inventory groups
-    // TODO later. <- remove ;)
-    
+    dispatcher/service:remediations#is_remediations@user:*
+    dispatcher/service:configmanager#is_configmanager@user:*
+    dispatcher/service:tasks#is_tasks@user:*
+
+    role:remediations_admin#dispatcher_view_remediations@user:*
+    role:remediations_admin#inventory_view_hosts@user:*
+    role:remediations_admin#patch_reader@user:*
+
+    role:configmanager_admin#dispatcher_view_configmanager@user:*
     role:configmanager_admin#inventory_view_hosts@user:*
+
+    role:tasks_admin#dispatcher_view_tasks@user:*
+    role:tasks_admin#inventory_view_hosts@user:*
     
     //Scenario data
     workspace:aspian_root#parent@organization:aspian
@@ -235,13 +249,16 @@ relationships: |-
     workspace:aspian/observability#user_grant@role_binding:aspian_observability_configmanager_admins
     
     inventory/host:00000000-0000-0000-0000-000000000001#workspace@workspace:aspian/telemetry
-    inventory/host:41e12750-da04-4651-84d1-187fa5c23f6c#workspace@workspace:aspian/observability
+    inventory/host:00000000-0000-0000-0000-000000000002#workspace@workspace:aspian/observability
 
     // setup hosts
     inventory/host:costco_host1#workspace@workspace:costco_root
     inventory/host:costco_host2#workspace@workspace:costco_root
     inventory/host:costco_specialhost1#workspace@workspace:costco_special
     inventory/host:costco_specialhost2#workspace@workspace:costco_special
+
+    patch/advisory:1#host@inventory/host:00000000-0000-0000-0000-000000000001
+    patch/advisory:2#host@inventory/host:00000000-0000-0000-0000-000000000002
 
      // TODO: add hosts to groups. inventory/host:costco_host2#group@...
 
