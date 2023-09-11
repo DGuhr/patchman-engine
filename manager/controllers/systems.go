@@ -223,13 +223,9 @@ func getAuthorizedHosts(user string) (hosts []string) {
 
 func systemsCommon(c *gin.Context, apiver int) (*gorm.DB, *ListMeta, []string, error) {
 	var err error
-	user, uErr := middlewares.GetCurrentUser(c)
+	userId := middlewares.GetCurrentUserId(c)
 
-	if uErr != nil {
-		return nil, nil, nil, uErr
-	}
-
-	authzHosts := getAuthorizedHosts(user.UserID) // this is a convenient place for demo purposes, but a spicedb error should be handled better and elsewhere
+	authzHosts := getAuthorizedHosts(userId) // this is a convenient place for demo purposes, but a spicedb error should be handled better and elsewhere
 	account := c.GetInt(middlewares.KeyAccount)
 	db := middlewares.DBFromContext(c)
 	query := querySystems(db, account, apiver, authzHosts)
