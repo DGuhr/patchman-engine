@@ -178,6 +178,7 @@ type SystemsResponseV3 struct {
 	Links Links          `json:"links"`
 	Meta  ListMeta       `json:"meta"`
 }
+type ginContext gin.Context
 
 func getAuthorizedHosts(user string) (hosts []string) {
 	spiceDBClient, err := authz_external.GetSpiceDbClient(spiceDBURL, spiceDBToken)
@@ -222,8 +223,13 @@ func getAuthorizedHosts(user string) (hosts []string) {
 
 func systemsCommon(c *gin.Context, apiver int) (*gorm.DB, *ListMeta, []string, error) {
 	var err error
-	user := c.GetString(middlewares.KeyUser)
-	authzHosts := getAuthorizedHosts(user) // this is a convenient place for demo purposes, but a spicedb error should be handled better and elsewhere
+	user, uErr := middlewares.GetCurrentUser(c)
+
+	if uErr != nil {
+		return nil, nil, nil, uErr
+	}
+
+	authzHosts := getAuthorizedHosts(user.UserID) // this is a convenient place for demo purposes, but a spicedb error should be handled better and elsewhere
 	account := c.GetInt(middlewares.KeyAccount)
 	db := middlewares.DBFromContext(c)
 	query := querySystems(db, account, apiver, authzHosts)

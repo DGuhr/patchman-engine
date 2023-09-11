@@ -143,3 +143,21 @@ func (c *ginContext) GetXRHID() *identity.XRHID {
 	}
 	return xrhid
 }
+
+func GetCurrentUser(c *gin.Context) (*identity.User, error) {
+	identStr := c.GetHeader("x-rh-identity")
+	if identStr == "" {
+		c.AbortWithStatusJSON(
+			http.StatusUnauthorized, utils.ErrorResponse{Error: "Missing x-rh-identity header"})
+		return nil, errors.New("Missing x-rh-identity header. Could not get user from Context.")
+	}
+	utils.LogTrace("ident", identStr, "Identity retrieved")
+
+	xrhid, err := utils.ParseXRHID(identStr)
+	if err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusUnauthorized, utils.ErrorResponse{Error: "Invalid x-rh-identity header"})
+		return nil, errors.New("Invalid x-rh-identity header. Could not get user from Context.")
+	}
+	return &xrhid.Identity.User, nil
+}
