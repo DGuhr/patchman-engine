@@ -212,7 +212,30 @@ relationships: |-
     workspace:costco_special#parent@organization:costco
     
     //setup inventory groups
-    // TODO later.
+    // TODO later. <- remove ;)
+    
+    role:configmanager_admin#inventory_view_hosts@user:*
+    
+    //Scenario data
+    workspace:aspian_root#parent@organization:aspian
+    workspace:aspian/telemetry#parent@workspace:aspian_root
+    workspace:aspian/observability#parent@workspace:aspian_root
+    
+    role_binding:aspian_remediations_admins#granted@role:remediations_admin
+    role_binding:aspian_remediations_admins#subject@user:sara
+    workspace:aspian_root#user_grant@role_binding:aspian_remediations_admins
+    
+    role_binding:aspian_telemetry_configmanager_admins#granted@role:configmanager_admin
+    role_binding:aspian_telemetry_configmanager_admins#subject@user:david
+    role_binding:aspian_telemetry_configmanager_admins#subject@user:abigail
+    workspace:aspian/telemetry#user_grant@role_binding:aspian_telemetry_configmanager_admins
+    
+    role_binding:aspian_observability_configmanager_admins#granted@role:configmanager_admin
+    role_binding:aspian_observability_configmanager_admins#subject@user:dani
+    workspace:aspian/observability#user_grant@role_binding:aspian_observability_configmanager_admins
+    
+    inventory/host:00000000-0000-0000-0000-000000000001#workspace@workspace:aspian/telemetry
+    inventory/host:41e12750-da04-4651-84d1-187fa5c23f6c#workspace@workspace:aspian/observability
 
     // setup hosts
     inventory/host:costco_host1#workspace@workspace:costco_root

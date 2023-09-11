@@ -26,7 +26,8 @@ encode <<IDENTITY
             "is_active": true,
             "is_org_admin": false,
             "is_internal": false,
-            "locale": "en_US"
+            "locale": "en_US",
+            "user_id": "abigail"
         },
         "internal": {
             "org_id": "$ACCOUNT_NUMBER",
