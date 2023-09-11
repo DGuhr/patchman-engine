@@ -54,7 +54,7 @@ func SystemDetailHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
 	//groups := c.GetStringMapString(middlewares.KeyInventoryGroups)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 
 	inventoryID := c.Param("inventory_id")
 	if inventoryID == "" {
@@ -181,7 +181,7 @@ func SystemYumUpdatesHandler(c *gin.Context) {
 
 func systemJSONsCommon(c *gin.Context, column string) *models.SystemPlatform {
 	account := c.GetInt(middlewares.KeyAccount)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 
 	inventoryID := c.Param("inventory_id")
 	if inventoryID == "" {

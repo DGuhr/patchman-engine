@@ -69,7 +69,7 @@ func packageVersionsQuery(db *gorm.DB, acc int, authzHosts []string, packageName
 // @Router /packages/{package_name}/versions [get]
 func PackageVersionsListHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 
 	packageName := c.Param("package_name")
 	if packageName == "" {

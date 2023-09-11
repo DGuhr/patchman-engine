@@ -167,7 +167,7 @@ func baselineSystemsCommon(c *gin.Context, account, apiver int, authzHosts []str
 func BaselineSystemsListHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 
 	query, meta, params, err := baselineSystemsCommon(c, account, apiver, authzHosts)
 	if err != nil {
@@ -222,7 +222,7 @@ func BaselineSystemsListHandler(c *gin.Context) {
 func BaselineSystemsListIDsHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 	if apiver < 3 {
 		c.AbortWithStatus(404)
 		return

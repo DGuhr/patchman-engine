@@ -84,7 +84,7 @@ func packageSystemsQuery(db *gorm.DB, acc int, authzHosts []string, packageName 
 
 func packageSystemsCommon(db *gorm.DB, c *gin.Context) (*gorm.DB, *ListMeta, []string, error) {
 	account := c.GetInt(middlewares.KeyAccount)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 	var filters map[string]FilterData
 
 	packageName := c.Param("package_name")

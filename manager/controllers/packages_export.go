@@ -26,7 +26,7 @@ import (
 func PackagesExportHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 	filters, err := ParseAllFilters(c, PackagesOpts)
 	if err != nil {
 		return

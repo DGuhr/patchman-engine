@@ -28,7 +28,7 @@ import (
 // @Router /export/advisories [get]
 func AdvisoriesExportHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 	filters, err := ParseAllFilters(c, AdvisoriesOpts)
 	if err != nil {
 		return

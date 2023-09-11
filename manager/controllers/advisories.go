@@ -119,7 +119,7 @@ type AdvisoriesResponseV3 struct {
 func advisoriesCommon(c *gin.Context) (*gorm.DB, *ListMeta, []string, error) {
 	db := middlewares.DBFromContext(c)
 	account := c.GetInt(middlewares.KeyAccount)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 	var query *gorm.DB
 	filters, err := ParseAllFilters(c, AdvisoriesOpts)
 	if err != nil {

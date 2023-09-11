@@ -39,7 +39,7 @@ import (
 func SystemsExportHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 	db := middlewares.DBFromContext(c)
 	query := querySystems(db, account, apiver, authzHosts)
 	filters, err := ParseAllFilters(c, SystemOpts)

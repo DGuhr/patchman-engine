@@ -45,7 +45,7 @@ type SystemPackageInlineV3 struct {
 func SystemPackagesExportHandler(c *gin.Context) {
 	account := c.GetInt(middlewares.KeyAccount)
 	apiver := c.GetInt(middlewares.KeyApiver)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 
 	inventoryID := c.Param("inventory_id")
 	if inventoryID == "" {

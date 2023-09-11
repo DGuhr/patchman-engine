@@ -64,7 +64,7 @@ var SystemTagsOpts = ListOpts{
 func SystemTagListHandler(c *gin.Context) {
 	var err error
 	account := c.GetInt(middlewares.KeyAccount)
-	authzHosts := getAuthorizedHosts(c.GetString(middlewares.KeyUser))
+	authzHosts := getAuthorizedHosts(middlewares.GetCurrentUserId(c))
 
 	db := middlewares.DBFromContext(c)
 	// https://stackoverflow.com/questions/33474778/how-to-group-result-by-array-column-in-postgres
